@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: discord-revolt-bridge
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: REVOLT_TOKEN
+        sync: false
