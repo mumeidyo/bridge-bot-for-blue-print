@@ -105,7 +105,11 @@ export class DiscordBot {
     }
   }
 
-  async sendMessage(channelId: string, content: string, options: { username?: string, avatarUrl?: string | null } = {}) {
+  async sendMessage(channelId: string, content: string, options: { 
+    username?: string, 
+    avatarUrl?: string | null,
+    replyToId?: string  
+  } = {}) {
     if (!this.ready) {
       storage.createLog({
         timestamp: new Date().toISOString(),
@@ -119,9 +123,32 @@ export class DiscordBot {
     try {
       const webhook = await this.getWebhook(channelId);
 
+      let replyMessage;
+      if (options.replyToId) {
+        try {
+          const channel = await this.client.channels.fetch(channelId);
+          if (channel instanceof TextChannel) {
+            replyMessage = await channel.messages.fetch(options.replyToId);
+          }
+        } catch (error) {
+          storage.createLog({
+            timestamp: new Date().toISOString(),
+            level: "warn",
+            message: "Failed to fetch reply message",
+            metadata: { error: (error as Error).message, replyToId: options.replyToId }
+          });
+        }
+      }
+
+      let messageContent = content;
+      if (replyMessage) {
+        const replyAuthor = replyMessage.author.username;
+        messageContent = `> ${replyAuthor}: ${replyMessage.content}\n${content}`;
+      }
+
       if (webhook && options.username) {
         const webhookMessage = await webhook.send({
-          content,
+          content: messageContent,
           username: options.username,
           avatarURL: options.avatarUrl || undefined,
           allowedMentions: { parse: [] }
@@ -135,7 +162,8 @@ export class DiscordBot {
             messageId: webhookMessage.id,
             webhookId: webhookMessage.webhook_id,
             username: options.username,
-            channelId
+            channelId,
+            isReply: !!options.replyToId
           }
         });
 
@@ -146,16 +174,25 @@ export class DiscordBot {
           throw new Error("Invalid channel type");
         }
 
-        const message = await channel.send({
-          content,
+        const messageOptions: any = {
+          content: messageContent,
           allowedMentions: { parse: [] }
-        });
+        };
+
+        if (replyMessage) {
+          messageOptions.reply = { messageReference: replyMessage };
+        }
+
+        const message = await channel.send(messageOptions);
 
         storage.createLog({
           timestamp: new Date().toISOString(),
           level: "info",
           message: "Successfully sent Discord message via bot",
-          metadata: { messageId: message.id }
+          metadata: { 
+            messageId: message.id,
+            isReply: !!options.replyToId
+          }
         });
 
         return message;
