@@ -30,12 +30,12 @@ export class RevoltBot {
       });
     });
 
-    this.client.on("error", (error: Error) => {
+    this.client.on("error", (error) => {
       storage.createLog({
         timestamp: new Date().toISOString(),
         level: "error",
         message: "Revolt bot error",
-        metadata: { error: error.message }
+        metadata: { error: (error as Error).message }
       });
     });
 
@@ -96,8 +96,9 @@ export class RevoltBot {
         }
       });
 
+      let messageContent = content;
       const messageData: any = {
-        content,
+        content: messageContent,
         masquerade: options.username ? {
           name: options.username,
           avatar: options.avatarUrl || undefined
@@ -105,7 +106,22 @@ export class RevoltBot {
       };
 
       if (options.replyToId) {
-        messageData.replies = [options.replyToId];
+        try {
+          const replyMessage = await channel.getMessage(options.replyToId);
+          if (replyMessage) {
+            messageData.replies = [options.replyToId];
+            // Add reply preview to the message content
+            messageContent = `> **${replyMessage.author?.username}:** ${replyMessage.content?.split('\n')[0]}\n${content}`;
+            messageData.content = messageContent;
+          }
+        } catch (error) {
+          storage.createLog({
+            timestamp: new Date().toISOString(),
+            level: "warn",
+            message: "Failed to fetch reply message in Revolt",
+            metadata: { error: (error as Error).message, replyToId: options.replyToId }
+          });
+        }
       }
 
       const message = await channel.sendMessage(messageData);
@@ -149,9 +165,9 @@ export class RevoltBot {
 
       try {
         const bridges = await storage.getBridges();
-        const bridge = bridges.find(b => b.revoltChannelId === message.channel?._id);
+        const bridge = bridges.find(b => b.revoltChannelId === message.channel?._id && b.enabled);
 
-        if (bridge && bridge.enabled) {
+        if (bridge) {
           storage.createLog({
             timestamp: new Date().toISOString(),
             level: "info",
