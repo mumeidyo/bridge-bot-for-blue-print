@@ -64,7 +64,11 @@ export class RevoltBot {
     }
   }
 
-  async sendMessage(channelId: string, content: string, options: { username?: string, avatarUrl?: string | null } = {}) {
+  async sendMessage(channelId: string, content: string, options: { 
+    username?: string, 
+    avatarUrl?: string | null,
+    replyToId?: string  
+  } = {}) {
     if (!this.ready) {
       storage.createLog({
         timestamp: new Date().toISOString(),
@@ -85,22 +89,35 @@ export class RevoltBot {
         timestamp: new Date().toISOString(),
         level: "info",
         message: "Attempting to send Revolt message",
-        metadata: { channelId, hasUsername: !!options.username }
+        metadata: { 
+          channelId, 
+          hasUsername: !!options.username,
+          isReply: !!options.replyToId
+        }
       });
 
-      const message = await channel.sendMessage({
+      const messageData: any = {
         content,
         masquerade: options.username ? {
           name: options.username,
           avatar: options.avatarUrl || undefined
         } : undefined
-      });
+      };
+
+      if (options.replyToId) {
+        messageData.replies = [options.replyToId];
+      }
+
+      const message = await channel.sendMessage(messageData);
 
       storage.createLog({
         timestamp: new Date().toISOString(),
         level: "info",
         message: "Successfully sent Revolt message",
-        metadata: { messageId: message._id }
+        metadata: { 
+          messageId: message._id,
+          isReply: !!options.replyToId
+        }
       });
 
       return message;
