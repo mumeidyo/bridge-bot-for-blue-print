@@ -122,13 +122,18 @@ export class DiscordBot {
 
     try {
       const webhook = await this.getWebhook(channelId);
+      let messageContent = content;
+      let messageReference = null;
 
-      let replyMessage;
       if (options.replyToId) {
         try {
           const channel = await this.client.channels.fetch(channelId);
           if (channel instanceof TextChannel) {
-            replyMessage = await channel.messages.fetch(options.replyToId);
+            const replyMessage = await channel.messages.fetch(options.replyToId);
+            if (replyMessage) {
+              messageReference = replyMessage;
+              messageContent = `> **${replyMessage.author.username}:** ${replyMessage.content.split('\n')[0]}\n${content}`;
+            }
           }
         } catch (error) {
           storage.createLog({
@@ -140,25 +145,20 @@ export class DiscordBot {
         }
       }
 
-      let messageContent = content;
-      if (replyMessage) {
-        const replyAuthor = replyMessage.author.username;
-        messageContent = `> ${replyAuthor}: ${replyMessage.content}\n${content}`;
-      }
-
       if (webhook && options.username) {
         const webhookMessage = await webhook.send({
           content: messageContent,
           username: options.username,
           avatarURL: options.avatarUrl || undefined,
-          allowedMentions: { parse: [] }
+          allowedMentions: { parse: [] },
+          threadId: messageReference?.threadId
         });
 
         storage.createLog({
           timestamp: new Date().toISOString(),
           level: "info",
           message: "Successfully sent Discord message via webhook",
-          metadata: {
+          metadata: { 
             messageId: webhookMessage.id,
             webhookId: webhookMessage.webhook_id,
             username: options.username,
@@ -179,8 +179,8 @@ export class DiscordBot {
           allowedMentions: { parse: [] }
         };
 
-        if (replyMessage) {
-          messageOptions.reply = { messageReference: replyMessage };
+        if (messageReference) {
+          messageOptions.reply = { messageReference: messageReference.id };
         }
 
         const message = await channel.send(messageOptions);
