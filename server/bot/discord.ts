@@ -1,4 +1,10 @@
-import { Client, GatewayIntentBits, TextChannel, Message, WebhookClient, ChannelType } from "discord.js";
+import {
+  Client,
+  GatewayIntentBits,
+  TextChannel,
+  Message,
+  WebhookClient,
+} from "discord.js";
 import { storage } from "../storage";
 import { Bridge } from "@shared/schema";
 
@@ -11,15 +17,15 @@ export class DiscordBot {
     storage.createLog({
       timestamp: new Date().toISOString(),
       level: "info",
-      message: "Creating Discord bot instance"
+      message: "Creating Discord bot instance",
     });
 
     this.client = new Client({
       intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
-      ]
+        GatewayIntentBits.MessageContent,
+      ],
     });
 
     this.client.on("ready", () => {
@@ -28,10 +34,10 @@ export class DiscordBot {
         timestamp: new Date().toISOString(),
         level: "info",
         message: "Discord bot ready",
-        metadata: { 
+        metadata: {
           username: this.client.user?.tag,
-          id: this.client.user?.id
-        }
+          id: this.client.user?.id,
+        },
       });
     });
 
@@ -40,7 +46,7 @@ export class DiscordBot {
         timestamp: new Date().toISOString(),
         level: "error",
         message: "Discord bot error",
-        metadata: { error: error.message }
+        metadata: { error: error.message },
       });
     });
 
@@ -48,7 +54,7 @@ export class DiscordBot {
       storage.createLog({
         timestamp: new Date().toISOString(),
         level: "info",
-        message: "Attempting Discord bot login"
+        message: "Attempting Discord bot login",
       });
 
       this.client.login(token).catch((error) => {
@@ -56,7 +62,7 @@ export class DiscordBot {
           timestamp: new Date().toISOString(),
           level: "error",
           message: "Discord bot login failed",
-          metadata: { error: error.message }
+          metadata: { error: error.message },
         });
       });
     } catch (error) {
@@ -64,7 +70,7 @@ export class DiscordBot {
         timestamp: new Date().toISOString(),
         level: "error",
         message: "Discord bot initialization failed",
-        metadata: { error: (error as Error).message }
+        metadata: { error: (error as Error).message },
       });
     }
   }
@@ -81,12 +87,14 @@ export class DiscordBot {
       }
 
       const webhooks = await channel.fetchWebhooks();
-      let webhook = webhooks.find(wh => wh.owner?.id === this.client.user?.id);
+      let webhook = webhooks.find(
+        (wh) => wh.owner?.id === this.client.user?.id,
+      );
 
       if (!webhook) {
         webhook = await channel.createWebhook({
           name: "Bridge Bot",
-          avatar: this.client.user?.displayAvatarURL()
+          avatar: this.client.user?.displayAvatarURL(),
         });
       }
 
@@ -99,23 +107,27 @@ export class DiscordBot {
         timestamp: new Date().toISOString(),
         level: "error",
         message: "Failed to get webhook",
-        metadata: { error: (error as Error).message, channelId }
+        metadata: { error: (error as Error).message, channelId },
       });
       return null;
     }
   }
 
-  async sendMessage(channelId: string, content: string, options: { 
-    username?: string, 
-    avatarUrl?: string | null,
-    replyToId?: string  
-  } = {}) {
+  async sendMessage(
+    channelId: string,
+    content: string,
+    options: {
+      username?: string;
+      avatarUrl?: string | null;
+      replyToId?: string;
+    } = {},
+  ) {
     if (!this.ready) {
       storage.createLog({
         timestamp: new Date().toISOString(),
         level: "error",
         message: "Attempted to send message before Discord bot was ready",
-        metadata: { channelId }
+        metadata: { channelId },
       });
       throw new Error("Discord bot not ready");
     }
@@ -129,10 +141,12 @@ export class DiscordBot {
         try {
           const channel = await this.client.channels.fetch(channelId);
           if (channel instanceof TextChannel) {
-            const replyMessage = await channel.messages.fetch(options.replyToId);
+            const replyMessage = await channel.messages.fetch(
+              options.replyToId,
+            );
             if (replyMessage) {
               messageReference = replyMessage;
-              messageContent = `> **${replyMessage.author.username}:** ${replyMessage.content.split('\n')[0]}\n${content}`;
+              messageContent = `> **${replyMessage.author.username}:** ${replyMessage.content.split("\n")[0]}\n${content}`;
             }
           }
         } catch (error) {
@@ -140,7 +154,10 @@ export class DiscordBot {
             timestamp: new Date().toISOString(),
             level: "warn",
             message: "Failed to fetch reply message",
-            metadata: { error: (error as Error).message, replyToId: options.replyToId }
+            metadata: {
+              error: (error as Error).message,
+              replyToId: options.replyToId,
+            },
           });
         }
       }
@@ -151,20 +168,20 @@ export class DiscordBot {
           username: options.username,
           avatarURL: options.avatarUrl || undefined,
           allowedMentions: { parse: [] },
-          threadId: messageReference?.threadId
+          thread: messageReference?.thread || undefined,
         });
 
         storage.createLog({
           timestamp: new Date().toISOString(),
           level: "info",
           message: "Successfully sent Discord message via webhook",
-          metadata: { 
+          metadata: {
             messageId: webhookMessage.id,
             webhookId: webhookMessage.webhook_id,
             username: options.username,
             channelId,
-            isReply: !!options.replyToId
-          }
+            isReply: !!options.replyToId,
+          },
         });
 
         return webhookMessage;
@@ -176,7 +193,7 @@ export class DiscordBot {
 
         const messageOptions: any = {
           content: messageContent,
-          allowedMentions: { parse: [] }
+          allowedMentions: { parse: [] },
         };
 
         if (messageReference) {
@@ -189,10 +206,10 @@ export class DiscordBot {
           timestamp: new Date().toISOString(),
           level: "info",
           message: "Successfully sent Discord message via bot",
-          metadata: { 
+          metadata: {
             messageId: message.id,
-            isReply: !!options.replyToId
-          }
+            isReply: !!options.replyToId,
+          },
         });
 
         return message;
@@ -202,7 +219,7 @@ export class DiscordBot {
         timestamp: new Date().toISOString(),
         level: "error",
         message: "Failed to send Discord message",
-        metadata: { error: (error as Error).message, channelId }
+        metadata: { error: (error as Error).message, channelId },
       });
       throw error;
     }
@@ -214,7 +231,9 @@ export class DiscordBot {
 
       try {
         const bridges = await storage.getBridges();
-        const bridge = bridges.find(b => b.discordChannelId === message.channelId && b.enabled);
+        const bridge = bridges.find(
+          (b) => b.discordChannelId === message.channelId && b.enabled,
+        );
 
         if (bridge) {
           await callback(message, bridge);
@@ -224,7 +243,7 @@ export class DiscordBot {
           timestamp: new Date().toISOString(),
           level: "error",
           message: "Failed to process Discord message",
-          metadata: { error: (error as Error).message, messageId: message.id }
+          metadata: { error: (error as Error).message, messageId: message.id },
         });
       }
     });
