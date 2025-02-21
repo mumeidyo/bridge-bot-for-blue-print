@@ -45,12 +45,16 @@ export async function initializeBridge(storage: IStorage) {
         const masquerades = await storage.getMasquerades(bridge.id);
         const masquerade = masquerades.find(m => m.userId === message.author.id);
 
+        // Get reference message if it's a reply
+        const replyToId = message.reference?.messageId;
+
         await revoltBot.sendMessage(
           bridge.revoltChannelId,
           message.content,
           {
             username: masquerade?.username || message.author.username,
-            avatarUrl: masquerade?.avatar || message.author.displayAvatarURL()
+            avatarUrl: masquerade?.avatar || message.author.displayAvatarURL(),
+            replyToId: replyToId
           }
         );
 
@@ -58,7 +62,10 @@ export async function initializeBridge(storage: IStorage) {
           timestamp: new Date().toISOString(),
           level: "info",
           message: "Successfully relayed Discord message to Revolt",
-          metadata: { messageId: message.id }
+          metadata: { 
+            messageId: message.id,
+            isReply: !!replyToId
+          }
         });
       } catch (error) {
         storage.createLog({
@@ -84,12 +91,16 @@ export async function initializeBridge(storage: IStorage) {
 
         const username = masquerade?.username || message.author.username;
 
+        // Get reference message if it's a reply
+        const replyToId = message.reply_ids?.[0];
+
         await discordBot.sendMessage(
           bridge.discordChannelId,
           message.content || "",
           {
             username: username,
-            avatarUrl: masquerade?.avatar || avatarUrl
+            avatarUrl: masquerade?.avatar || avatarUrl,
+            replyToId: replyToId
           }
         );
 
@@ -97,7 +108,10 @@ export async function initializeBridge(storage: IStorage) {
           timestamp: new Date().toISOString(),
           level: "info",
           message: "Successfully relayed Revolt message to Discord",
-          metadata: { messageId: message._id }
+          metadata: { 
+            messageId: message._id,
+            isReply: !!replyToId
+          }
         });
       } catch (error) {
         storage.createLog({
