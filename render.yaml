@@ -3,7 +3,7 @@ services:
     name: discord-revolt-bridge
     env: node
     buildCommand: npm install && npm run build
-    startCommand: npm start
+    startCommand: ./start-render.sh
     envVars:
       - key: NODE_ENV
         value: production
