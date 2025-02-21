@@ -107,11 +107,18 @@ export class RevoltBot {
 
       if (options.replyToId) {
         try {
-          const replyMessage = await channel.getMessage(options.replyToId);
+          const replyMessage = await channel.fetchMessage(options.replyToId);
           if (replyMessage) {
             messageData.replies = [options.replyToId];
-            // Add reply preview to the message content
-            messageContent = `> **${replyMessage.author?.username}:** ${replyMessage.content?.split('\n')[0]}\n${content}`;
+            // Format the reply as shown in the screenshot
+            const timestamp = new Date().toLocaleString('ja-JP', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            messageContent = `アプリ\n@${replyMessage.author?.username}\n${replyMessage.content?.split('\n')[0]}\n${timestamp}\n${content}`;
             messageData.content = messageContent;
           }
         } catch (error) {
@@ -151,17 +158,6 @@ export class RevoltBot {
   onMessage(callback: (message: Message, bridge: Bridge) => Promise<void>) {
     this.client.on("message", async (message: Message) => {
       if (message.author?.bot) return;
-
-      storage.createLog({
-        timestamp: new Date().toISOString(),
-        level: "info",
-        message: "Received Revolt message",
-        metadata: { 
-          messageId: message._id,
-          channelId: message.channel?._id,
-          authorId: message.author?._id 
-        }
-      });
 
       try {
         const bridges = await storage.getBridges();
